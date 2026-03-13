@@ -1,0 +1,14 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+
+# Virtual environments
+.venv
+
+# IDEs
+.codex/
+.claude/
+
+# Agent prompt files (generated per-session by launchers)
+CLAUDE.md
+AGENTS.md
