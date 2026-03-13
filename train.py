@@ -48,8 +48,8 @@ def norm(x):
 
 
 def has_ve(layer_idx, n_layer):
-    """Returns True if layer should have Value Embedding (alternating, last always included)."""
-    return layer_idx % 2 == (n_layer - 1) % 2
+    """Disable value embeddings for this experiment."""
+    return False
 
 
 def apply_rotary_emb(x, cos, sin):
@@ -433,7 +433,7 @@ class MuonAdamW(torch.optim.Optimizer):
 # ---------------------------------------------------------------------------
 
 # Model architecture
-ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
+ASPECT_RATIO = 42       # keep depth-12 model near 512 width after head-dim rounding
 HEAD_DIM = 128          # target head dimension for attention
 WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 
@@ -450,7 +450,7 @@ WARMDOWN_RATIO = 0.5    # fraction of time budget for LR warmdown
 FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
 
 # Model size
-DEPTH = 8               # number of transformer layers
+DEPTH = 12              # number of transformer layers
 DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
 
 # ---------------------------------------------------------------------------
