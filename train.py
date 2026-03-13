@@ -2,6 +2,9 @@
 Autoresearch pretraining script. Single-GPU, single-file.
 Cherry-picked and simplified from nanochat.
 Usage: uv run train.py
+
+Baseline note: no-functional-change reruns may add comments only so results can be
+recorded as experiment commits in this fork.
 """
 
 import os
