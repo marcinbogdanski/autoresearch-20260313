@@ -83,8 +83,8 @@ class CausalSelfAttention(nn.Module):
         # Value residual (ResFormer): mix in value embedding with input-dependent gate per head
         if ve is not None:
             ve = ve.view(B, T, self.n_kv_head, self.head_dim)
-            gate = 2 * torch.sigmoid(self.ve_gate(x[..., :self.ve_gate_channels]))
-            v = v + gate.unsqueeze(-1) * ve
+            gate = self.ve_gate(x[..., :self.ve_gate_channels])
+            v = v + ve + 0.0 * gate.unsqueeze(-1)
 
         cos, sin = cos_sin
         q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
