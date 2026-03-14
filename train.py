@@ -445,7 +445,7 @@ WEIGHT_DECAY = 0.06     # slightly stronger Muon regularization near the current
 ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
 WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
 WARMDOWN_RATIO = 0.6    # longer decay to exploit extra max-autotune steps
-FINAL_LR_FRAC = 0.05    # probe a smaller nonzero LR floor during final decay
+FINAL_LR_FRAC = 0.04    # slightly sharper landing on the seed-0 best
 
 # Model size
 DEPTH = 8               # number of transformer layers
