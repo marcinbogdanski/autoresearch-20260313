@@ -195,10 +195,11 @@ class GPT(nn.Module):
 
     def _compute_window_sizes(self, config):
         pattern = config.window_pattern.upper()
-        assert all(c in "SL" for c in pattern)
+        assert all(c in "SML" for c in pattern)
         long_window = config.sequence_len
+        medium_window = long_window // 8
         short_window = long_window // 16
-        char_to_window = {"L": (long_window, 0), "S": (short_window, 0)}
+        char_to_window = {"L": (long_window, 0), "M": (medium_window, 0), "S": (short_window, 0)}
         window_sizes = []
         for layer_idx in range(config.n_layer):
             char = pattern[layer_idx % len(pattern)]
@@ -433,7 +434,7 @@ class MuonAdamW(torch.optim.Optimizer):
 # Model architecture
 ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
 HEAD_DIM = 128          # target head dimension for attention
-WINDOW_PATTERN = "S"    # all local windows except forced final global layer
+WINDOW_PATTERN = "SSSSSSMS" # penultimate layer gets medium context before the forced final global layer
 
 # Optimization
 TOTAL_BATCH_SIZE = 2**15 # ~33K tokens per optimizer step (test even more updates)
