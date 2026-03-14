@@ -89,6 +89,7 @@ class CausalSelfAttention(nn.Module):
         cos, sin = cos_sin
         q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
         q, k = norm(q), norm(k)
+        q, k = q * 1.15, k * 1.15  # post-QK-norm scaling for sharper attention
 
         y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
         y = y.contiguous().view(B, T, -1)
@@ -437,7 +438,7 @@ WINDOW_PATTERN = "S"    # all local windows except forced final global layer
 # Optimization
 TOTAL_BATCH_SIZE = 2**15 # ~33K tokens per optimizer step (test even more updates)
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
-UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
+UNEMBEDDING_LR = 0.008  # learning rate for lm_head (Adam, doubled)
 MATRIX_LR = 0.03        # gentler Muon step for the 2^16 high-update regime
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
 WEIGHT_DECAY = 0.05     # even lighter Muon regularization on the lean 2x-MLP model
