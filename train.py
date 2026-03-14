@@ -323,7 +323,7 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
     g = stacked_grads.lerp_(momentum_buffer, momentum)
     # Polar express orthogonalization
     X = g.bfloat16()
-    X = X / (X.norm(dim=(-2, -1), keepdim=True) * 1.02 + 1e-6)
+    X = X / (X.norm(dim=(-2, -1), keepdim=True) * 1.01 + 1e-6)
     if g.size(-2) > g.size(-1):
         for a, b, c in polar_express_coeffs[:ns_steps]:
             A = X.mT @ X
@@ -438,7 +438,7 @@ WINDOW_PATTERN = "S"    # all local windows except forced final global layer
 # Optimization
 TOTAL_BATCH_SIZE = 2**15 # ~33K tokens per optimizer step (test even more updates)
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
-UNEMBEDDING_LR = 0.008  # learning rate for lm_head (Adam, doubled)
+UNEMBEDDING_LR = 0.012  # learning rate for lm_head (Adam, tripled)
 MATRIX_LR = 0.03        # gentler Muon step for the 2^16 high-update regime
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
 WEIGHT_DECAY = 0.05     # even lighter Muon regularization on the lean 2x-MLP model
