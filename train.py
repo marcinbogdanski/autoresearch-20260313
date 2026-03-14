@@ -456,8 +456,8 @@ DEVICE_BATCH_SIZE = 16  # smaller device batch enables 2^15 total batch
 # ---------------------------------------------------------------------------
 
 t_start = time.time()
-torch.manual_seed(42)
-torch.cuda.manual_seed(42)
+torch.manual_seed(0)
+torch.cuda.manual_seed(0)
 torch.set_float32_matmul_precision("high")
 device = torch.device("cuda")
 autocast_ctx = torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16)
