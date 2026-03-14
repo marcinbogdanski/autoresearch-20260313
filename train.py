@@ -23,7 +23,7 @@ cap = torch.cuda.get_device_capability()
 repo = "varunneal/flash-attention-3" if cap == (9, 0) else "kernels-community/flash-attn3"
 fa3 = get_kernel(repo).flash_attn_interface
 
-from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
+from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb, get_token_bytes
 
 # ---------------------------------------------------------------------------
 # GPT Model
@@ -511,6 +511,9 @@ model = torch.compile(model, dynamic=False)
 train_loader = make_dataloader(tokenizer, DEVICE_BATCH_SIZE, MAX_SEQ_LEN, "train")
 x, y, epoch = next(train_loader)  # prefetch first batch
 
+# Preload token byte lengths for byte-weighted loss
+token_bytes_gpu = get_token_bytes(device="cuda").float()
+
 print(f"Time budget: {TIME_BUDGET}s")
 print(f"Gradient accumulation steps: {grad_accum_steps}")
 
@@ -546,7 +549,11 @@ while True:
     t0 = time.time()
     for micro_step in range(grad_accum_steps):
         with autocast_ctx:
-            loss = model(x, y)
+            loss_flat = model(x, y, reduction='none')
+        # Byte-weighted loss: align training objective with BPB eval metric
+        byte_weights = token_bytes_gpu[y.view(-1)]
+        mask = byte_weights > 0
+        loss = (loss_flat.view(-1) * byte_weights * mask).sum() / byte_weights.sum().clamp_min(1)
         train_loss = loss.detach()
         loss = loss / grad_accum_steps
         loss.backward()
