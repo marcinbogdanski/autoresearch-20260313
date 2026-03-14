@@ -541,6 +541,11 @@ smooth_train_loss = 0
 total_training_time = 0
 step = 0
 
+# EMA of model weights (Polyak averaging for better generalization)
+EMA_DECAY = 0.995
+ema_params = {name: p.data.clone() for name, p in model.named_parameters()}
+ema_started = False
+
 while True:
     torch.cuda.synchronize()
     t0 = time.time()
@@ -564,6 +569,17 @@ while True:
             group["weight_decay"] = muon_weight_decay
     optimizer.step()
     model.zero_grad(set_to_none=True)
+
+    # Update EMA weights (start after warmup steps to avoid capturing compilation artifacts)
+    if step > 10:
+        if not ema_started:
+            # Re-initialize EMA from current weights after warmup
+            for name, p in model.named_parameters():
+                ema_params[name].copy_(p.data)
+            ema_started = True
+        else:
+            for name, p in model.named_parameters():
+                ema_params[name].lerp_(p.data, 1 - EMA_DECAY)
 
     train_loss_f = train_loss.item()
 
@@ -607,6 +623,12 @@ while True:
 print()  # newline after \r training log
 
 total_tokens = step * TOTAL_BATCH_SIZE
+
+# Swap to EMA weights for evaluation
+original_params = {}
+for name, p in model.named_parameters():
+    original_params[name] = p.data.clone()
+    p.data.copy_(ema_params[name])
 
 # Final eval
 model.eval()
