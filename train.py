@@ -438,7 +438,7 @@ WINDOW_PATTERN = "S"    # all local windows except forced final global layer
 # Optimization
 TOTAL_BATCH_SIZE = 2**15 # ~33K tokens per optimizer step (test even more updates)
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
-UNEMBEDDING_LR = 0.008  # learning rate for lm_head (Adam, doubled)
+UNEMBEDDING_LR = 0.009  # probe a slightly higher lm_head LR around the current local best
 MATRIX_LR = 0.03        # gentler Muon step for the 2^16 high-update regime
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
 WEIGHT_DECAY = 0.06     # slightly stronger Muon regularization near the current sweet spot
