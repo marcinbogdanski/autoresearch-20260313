@@ -200,7 +200,7 @@ class GPT(nn.Module):
         early_short_window = long_window // 32
         late_short_window = long_window // 16
         window_sizes = []
-        num_early_local_layers = 1
+        num_early_local_layers = 2
         for layer_idx in range(config.n_layer):
             char = pattern[layer_idx % len(pattern)]
             if char == "L":
