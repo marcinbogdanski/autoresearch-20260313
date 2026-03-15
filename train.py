@@ -197,17 +197,14 @@ class GPT(nn.Module):
         pattern = config.window_pattern.upper()
         assert all(c in "SL" for c in pattern)
         long_window = config.sequence_len
-        early_short_window = long_window // 32
         late_short_window = long_window // 16
         window_sizes = []
-        num_early_local_layers = 1
         for layer_idx in range(config.n_layer):
             char = pattern[layer_idx % len(pattern)]
             if char == "L":
                 window_sizes.append((long_window, 0))
             else:
-                short_window = early_short_window if layer_idx < num_early_local_layers else late_short_window
-                window_sizes.append((short_window, 0))
+                window_sizes.append((late_short_window, 0))
         window_sizes[-1] = (long_window, 0)
         return window_sizes
 
