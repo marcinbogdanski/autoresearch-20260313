@@ -432,7 +432,7 @@ class MuonAdamW(torch.optim.Optimizer):
 
 # Model architecture
 ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
-HEAD_DIM = 128          # target head dimension for attention
+HEAD_DIM = 256          # test fewer, larger attention heads at fixed model width
 WINDOW_PATTERN = "S"    # all local windows except forced final global layer
 
 # Optimization
