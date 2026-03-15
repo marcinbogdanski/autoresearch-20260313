@@ -525,9 +525,14 @@ def get_lr_multiplier(progress):
         cooldown = (1.0 - progress) / WARMDOWN_RATIO
         return cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC
 
-def get_muon_momentum(step):
+def get_muon_momentum(step, progress=0.0):
     frac = min(step / 300, 1)
-    return (1 - frac) * 0.85 + frac * 0.95
+    base_momentum = (1 - frac) * 0.85 + frac * 0.95
+    # Decay momentum during warmdown for finer convergence
+    if progress > 1.0 - WARMDOWN_RATIO:
+        cooldown = (1.0 - progress) / WARMDOWN_RATIO  # 1→0
+        base_momentum = 0.85 + cooldown * (base_momentum - 0.85)
+    return base_momentum
 
 def get_weight_decay(progress):
     return WEIGHT_DECAY * (1 - progress)
@@ -555,7 +560,7 @@ while True:
     # Progress and schedules
     progress = min(total_training_time / TIME_BUDGET, 1.0)
     lrm = get_lr_multiplier(progress)
-    muon_momentum = get_muon_momentum(step)
+    muon_momentum = get_muon_momentum(step, progress)
     muon_weight_decay = get_weight_decay(progress)
     for group in optimizer.param_groups:
         group["lr"] = group["initial_lr"] * lrm
