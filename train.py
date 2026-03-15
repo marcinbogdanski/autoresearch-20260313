@@ -288,6 +288,10 @@ class GPT(nn.Module):
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1),
                                    ignore_index=-1, reduction=reduction)
+            if reduction == 'mean':
+                # z-loss: penalize large logits (PaLM-style router z-loss)
+                z_loss = 1e-4 * torch.logsumexp(logits, dim=-1).pow(2).mean()
+                loss = loss + z_loss
             return loss
         return logits
 
