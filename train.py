@@ -172,7 +172,7 @@ class GPT(nn.Module):
         for block in self.transformer.h:
             if block.attn.ve_gate is not None:
                 torch.nn.init.zeros_(block.attn.ve_gate.weight)
-                torch.nn.init.constant_(block.attn.ve_gate.bias, -0.5)
+                torch.nn.init.constant_(block.attn.ve_gate.bias, -0.25)
         # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
         cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
