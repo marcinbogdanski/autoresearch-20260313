@@ -100,14 +100,13 @@ class CausalSelfAttention(nn.Module):
 class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.c_fc = nn.Linear(config.n_embd, 2 * config.n_embd, bias=False)
-        self.c_proj = nn.Linear(2 * config.n_embd, config.n_embd, bias=False)
+        hidden_dim = 4 * config.n_embd // 3  # param-matched to 2x expansion ReLU^2
+        self.gate = nn.Linear(config.n_embd, hidden_dim, bias=False)
+        self.up = nn.Linear(config.n_embd, hidden_dim, bias=False)
+        self.c_proj = nn.Linear(hidden_dim, config.n_embd, bias=False)
 
     def forward(self, x):
-        x = self.c_fc(x)
-        x = F.relu(x).square()
-        x = self.c_proj(x)
-        return x
+        return self.c_proj(F.silu(self.gate(x)) * self.up(x))
 
 
 class Block(nn.Module):
@@ -160,7 +159,8 @@ class GPT(nn.Module):
             torch.nn.init.uniform_(block.attn.c_k.weight, -s, s)
             torch.nn.init.uniform_(block.attn.c_v.weight, -s, s)
             torch.nn.init.zeros_(block.attn.c_proj.weight)
-            torch.nn.init.uniform_(block.mlp.c_fc.weight, -s, s)
+            torch.nn.init.uniform_(block.mlp.gate.weight, -s, s)
+            torch.nn.init.uniform_(block.mlp.up.weight, -s, s)
             torch.nn.init.zeros_(block.mlp.c_proj.weight)
         # Per-layer scalars
         self.resid_lambdas.fill_(1.0)
