@@ -132,8 +132,8 @@ class GPT(nn.Module):
             "h": nn.ModuleList([Block(config, i) for i in range(config.n_layer)]),
         })
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-        self.resid_lambdas = nn.Parameter(torch.ones(config.n_layer))
-        self.x0_lambdas = nn.Parameter(torch.zeros(config.n_layer))
+        self.resid_lambdas = nn.Parameter(torch.ones(config.n_layer), requires_grad=False)
+        self.x0_lambdas = nn.Parameter(torch.zeros(config.n_layer), requires_grad=False)
         # Value embeddings
         head_dim = config.n_embd // config.n_head
         kv_dim = config.n_kv_head * head_dim
