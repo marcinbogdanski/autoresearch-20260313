@@ -450,7 +450,7 @@ WEIGHT_DECAY = 0.057    # fine-grained WD probe
 ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
 WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
 WARMDOWN_RATIO = 0.6    # longer decay to exploit extra max-autotune steps
-FINAL_LR_FRAC = 0.05    # probe a smaller nonzero LR floor during final decay
+FINAL_LR_FRAC = 0.03    # lower LR floor
 
 # Model size
 DEPTH = 8               # number of transformer layers
