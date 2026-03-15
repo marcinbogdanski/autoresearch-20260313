@@ -169,10 +169,11 @@ class GPT(nn.Module):
         for ve in self.value_embeds.values():
             torch.nn.init.uniform_(ve.weight, -s, s)
         # Gate init: start below the neutral 1.0 VE scale, but let the gate learn upward if useful
-        for block in self.transformer.h:
+        for layer_idx, block in enumerate(self.transformer.h):
             if block.attn.ve_gate is not None:
                 torch.nn.init.zeros_(block.attn.ve_gate.weight)
-                torch.nn.init.constant_(block.attn.ve_gate.bias, -0.5)
+                bias = -0.75 if layer_idx == 0 else -0.5
+                torch.nn.init.constant_(block.attn.ve_gate.bias, bias)
         # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
         cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
