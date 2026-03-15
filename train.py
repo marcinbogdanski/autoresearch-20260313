@@ -197,7 +197,7 @@ class GPT(nn.Module):
         pattern = config.window_pattern.upper()
         assert all(c in "SL" for c in pattern)
         long_window = config.sequence_len
-        early_short_window = long_window // 32
+        early_short_window = 80
         late_short_window = long_window // 16
         window_sizes = []
         num_early_local_layers = 1
