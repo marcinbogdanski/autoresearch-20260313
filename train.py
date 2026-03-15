@@ -234,7 +234,7 @@ class GPT(nn.Module):
             'transformer_matrices': transformer_matrices, 'scalars': scalars, 'total': total,
         }
 
-    def setup_optimizer(self, unembedding_lr=0.004, embedding_lr=0.2, matrix_lr=0.02,
+    def setup_optimizer(self, unembedding_lr=0.004, embedding_lr=0.2, value_embedding_lr=None, matrix_lr=0.02,
                         weight_decay=0.0, adam_betas=(0.8, 0.95), scalar_lr=0.5):
         model_dim = self.config.n_embd
         matrix_params = list(self.transformer.h.parameters())
@@ -248,10 +248,12 @@ class GPT(nn.Module):
         # Scale LR ∝ 1/√dmodel (tuned at 768 dim)
         dmodel_lr_scale = (model_dim / 768) ** -0.5
         print(f"Scaling AdamW LRs by 1/sqrt({model_dim}/768) = {dmodel_lr_scale:.6f}")
+        if value_embedding_lr is None:
+            value_embedding_lr = embedding_lr
         param_groups = [
             dict(kind='adamw', params=lm_head_params, lr=unembedding_lr * dmodel_lr_scale, betas=adam_betas, eps=1e-10, weight_decay=0.0),
             dict(kind='adamw', params=embedding_params, lr=embedding_lr * dmodel_lr_scale, betas=adam_betas, eps=1e-10, weight_decay=0.0),
-            dict(kind='adamw', params=value_embeds_params, lr=embedding_lr * dmodel_lr_scale, betas=adam_betas, eps=1e-10, weight_decay=0.0),
+            dict(kind='adamw', params=value_embeds_params, lr=value_embedding_lr * dmodel_lr_scale, betas=adam_betas, eps=1e-10, weight_decay=0.0),
             dict(kind='adamw', params=resid_params, lr=scalar_lr * 0.01, betas=adam_betas, eps=1e-10, weight_decay=0.0),
             dict(kind='adamw', params=x0_params, lr=scalar_lr, betas=(0.96, 0.95), eps=1e-10, weight_decay=0.0),
         ]
@@ -438,6 +440,7 @@ WINDOW_PATTERN = "S"    # all local windows except forced final global layer
 # Optimization
 TOTAL_BATCH_SIZE = 2**15 # ~33K tokens per optimizer step (test even more updates)
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
+VALUE_EMBEDDING_LR = 0.3 # gentler Adam step for value-embedding tables
 UNEMBEDDING_LR = 0.008  # learning rate for lm_head (Adam, doubled)
 MATRIX_LR = 0.03        # gentler Muon step for the 2^16 high-update regime
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
@@ -500,6 +503,7 @@ grad_accum_steps = TOTAL_BATCH_SIZE // tokens_per_fwdbwd
 optimizer = model.setup_optimizer(
     unembedding_lr=UNEMBEDDING_LR,
     embedding_lr=EMBEDDING_LR,
+    value_embedding_lr=VALUE_EMBEDDING_LR,
     scalar_lr=SCALAR_LR,
     adam_betas=ADAM_BETAS,
     matrix_lr=MATRIX_LR,
