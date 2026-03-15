@@ -436,7 +436,7 @@ HEAD_DIM = 128          # target head dimension for attention
 WINDOW_PATTERN = "S"    # all local windows except forced final global layer
 
 # Optimization
-TOTAL_BATCH_SIZE = 2**15 # ~33K tokens per optimizer step (test even more updates)
+TOTAL_BATCH_SIZE = 2**16 # ~65K tokens per optimizer step (better gradient quality)
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
 UNEMBEDDING_LR = 0.008  # learning rate for lm_head (Adam, doubled)
 MATRIX_LR = 0.03        # gentler Muon step for the 2^16 high-update regime
@@ -449,7 +449,7 @@ FINAL_LR_FRAC = 0.05    # probe a smaller nonzero LR floor during final decay
 
 # Model size
 DEPTH = 8               # number of transformer layers
-DEVICE_BATCH_SIZE = 16  # smaller device batch enables 2^15 total batch
+DEVICE_BATCH_SIZE = 32  # larger device batch, no grad accum with 2^16
 
 # ---------------------------------------------------------------------------
 # Setup: tokenizer, model, optimizer, dataloader
