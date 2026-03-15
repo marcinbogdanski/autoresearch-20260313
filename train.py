@@ -143,7 +143,8 @@ class GPT(nn.Module):
         })
         # Rotary embeddings
         self.rotary_seq_len = config.sequence_len * 10
-        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
+        self.rope_bases = self._make_layerwise_rope_bases(config.n_layer)
+        cos, sin = self._precompute_layerwise_rotary_embeddings(self.rotary_seq_len, head_dim, self.rope_bases)
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
 
@@ -174,14 +175,24 @@ class GPT(nn.Module):
                 torch.nn.init.zeros_(block.attn.ve_gate.weight)
         # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
-        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
+        cos, sin = self._precompute_layerwise_rotary_embeddings(self.rotary_seq_len, head_dim, self.rope_bases)
         self.cos, self.sin = cos, sin
         # Cast embeddings to bf16
         self.transformer.wte.to(dtype=torch.bfloat16)
         for ve in self.value_embeds.values():
             ve.to(dtype=torch.bfloat16)
 
-    def _precompute_rotary_embeddings(self, seq_len, head_dim, base=200000, device=None):
+    def _make_layerwise_rope_bases(self, n_layer, min_base=100000, max_base=400000):
+        if n_layer == 1:
+            return [200000.0]
+        log_min = math.log(min_base)
+        log_max = math.log(max_base)
+        return [
+            math.exp(log_min + (log_max - log_min) * i / (n_layer - 1))
+            for i in range(n_layer)
+        ]
+
+    def _precompute_rotary_embeddings(self, seq_len, head_dim, base, device=None):
         if device is None:
             device = self.transformer.wte.weight.device
         channel_range = torch.arange(0, head_dim, 2, dtype=torch.float32, device=device)
@@ -192,6 +203,14 @@ class GPT(nn.Module):
         cos, sin = cos.bfloat16(), sin.bfloat16()
         cos, sin = cos[None, :, None, :], sin[None, :, None, :]
         return cos, sin
+
+    def _precompute_layerwise_rotary_embeddings(self, seq_len, head_dim, bases):
+        cos_list, sin_list = [], []
+        for base in bases:
+            cos, sin = self._precompute_rotary_embeddings(seq_len, head_dim, base)
+            cos_list.append(cos)
+            sin_list.append(sin)
+        return torch.stack(cos_list), torch.stack(sin_list)
 
     def _compute_window_sizes(self, config):
         pattern = config.window_pattern.upper()
@@ -268,13 +287,13 @@ class GPT(nn.Module):
 
     def forward(self, idx, targets=None, reduction='mean'):
         B, T = idx.size()
-        assert T <= self.cos.size(1)
-        cos_sin = self.cos[:, :T], self.sin[:, :T]
+        assert T <= self.cos.size(2)
 
         x = self.transformer.wte(idx)
         x = norm(x)
         x0 = x
         for i, block in enumerate(self.transformer.h):
+            cos_sin = self.cos[i, :, :T], self.sin[i, :, :T]
             x = self.resid_lambdas[i] * x + self.x0_lambdas[i] * x0
             ve = self.value_embeds[str(i)](idx) if str(i) in self.value_embeds else None
             x = block(x, ve, cos_sin, self.window_sizes[i])
@@ -489,6 +508,7 @@ param_counts = model.num_scaling_params()
 print("Parameter counts:")
 for key, value in param_counts.items():
     print(f"  {key:24s}: {value:,}")
+print(f"Layerwise RoPE bases: {[round(b) for b in model.rope_bases]}")
 num_params = param_counts['total']
 num_flops_per_token = model.estimate_flops()
 print(f"Estimated FLOPs per token: {num_flops_per_token:e}")
