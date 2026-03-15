@@ -143,9 +143,12 @@ class GPT(nn.Module):
         })
         # Rotary embeddings
         self.rotary_seq_len = config.sequence_len * 10
-        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
+        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=200000)
+        final_cos, final_sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=500000)
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
+        self.register_buffer("final_cos", final_cos, persistent=False)
+        self.register_buffer("final_sin", final_sin, persistent=False)
 
     @torch.no_grad()
     def init_weights(self):
@@ -174,8 +177,10 @@ class GPT(nn.Module):
                 torch.nn.init.zeros_(block.attn.ve_gate.weight)
         # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
-        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
+        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=200000)
+        final_cos, final_sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=500000)
         self.cos, self.sin = cos, sin
+        self.final_cos, self.final_sin = final_cos, final_sin
         # Cast embeddings to bf16
         self.transformer.wte.to(dtype=torch.bfloat16)
         for ve in self.value_embeds.values():
@@ -269,12 +274,15 @@ class GPT(nn.Module):
     def forward(self, idx, targets=None, reduction='mean'):
         B, T = idx.size()
         assert T <= self.cos.size(1)
-        cos_sin = self.cos[:, :T], self.sin[:, :T]
 
         x = self.transformer.wte(idx)
         x = norm(x)
         x0 = x
         for i, block in enumerate(self.transformer.h):
+            if i == self.config.n_layer - 1:
+                cos_sin = self.final_cos[:, :T], self.final_sin[:, :T]
+            else:
+                cos_sin = self.cos[:, :T], self.sin[:, :T]
             x = self.resid_lambdas[i] * x + self.x0_lambdas[i] * x0
             ve = self.value_embeds[str(i)](idx) if str(i) in self.value_embeds else None
             x = block(x, ve, cos_sin, self.window_sizes[i])
@@ -479,6 +487,7 @@ def build_model_config(depth):
 
 config = build_model_config(DEPTH)
 print(f"Model config: {asdict(config)}")
+print("RoPE bases: local=200000 final=500000")
 
 with torch.device("meta"):
     model = GPT(config)
